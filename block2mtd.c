@@ -218,7 +218,7 @@ static void block2mtd_free_device(struct block2mtd_dev *dev)
 }
 
 
-static struct block2mtd_dev *add_device(char *devname, int erase_size,
+static struct block2mtd_dev *add_device(char *devname, int dev_size, int erase_size,
 		int writesize, int timeout)
 {
 #ifndef MODULE
@@ -274,6 +274,8 @@ static struct block2mtd_dev *add_device(char *devname, int erase_size,
 		goto err_free_block2mtd;
 	}
 
+    if (dev_size)
+        dev->blkdev->bd_inode->i_size = dev_size;
 	if ((long)dev->blkdev->bd_inode->i_size % erase_size) {
 		pr_err("erasesize must be a divisor of device size\n");
 		goto err_free_block2mtd;
@@ -384,11 +386,12 @@ static int block2mtd_setup2(const char *val)
 	/* 80 for device, 12 for erase size, 12 for write_size, 80 for name, 8 for timeout */
 	char buf[80 + 12 + 12 + 80 + 8];
 	char *str = buf;
-	char *token[3];
+	char *token[4];
 	char *name;
 	size_t erase_size = PAGE_SIZE;
 	unsigned long timeout = MTD_DEFAULT_TIMEOUT;
 	size_t write_size = 1;
+	size_t dev_size = 0;
 	int i, ret;
 
 	if (strnlen(val, sizeof(buf)) >= sizeof(buf)) {
@@ -399,7 +402,7 @@ static int block2mtd_setup2(const char *val)
 	strcpy(str, val);
 	kill_final_newline(str);
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 4; i++)
 		token[i] = strsep(&str, ",");
 
 	if (str) {
@@ -432,7 +435,14 @@ static int block2mtd_setup2(const char *val)
 			pr_err("illegal write size\n");
 		}
 	}
-	add_device(name, erase_size, write_size,timeout);
+
+	if (token[3]) {
+		ret = parse_num(&dev_size, token[3]);
+		if (ret) {
+			pr_err("illegal write size\n");
+		}
+	}
+	add_device(name, dev_size, erase_size, write_size,timeout);
 
 	return 0;
 }
@@ -466,7 +476,7 @@ static int block2mtd_setup(const char *val, struct kernel_param *kp)
 
 
 module_param_call(block2mtd, block2mtd_setup, NULL, NULL, 0200);
-MODULE_PARM_DESC(block2mtd, "Device to use. \"block2mtd=<dev>[,<erasesize>,[<writesize>]]\"");
+MODULE_PARM_DESC(block2mtd, "Device to use. \"block2mtd=<dev>[,<erasesize>,[<writesize>,[<devsize>]]]\"");
 
 static int __init block2mtd_init(void)
 {
