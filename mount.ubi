@@ -1,0 +1,10 @@
+#!/bin/bash
+if [[ $# -eq 0 ]];then
+    echo pls use img
+    exit
+fi
+unusedev=$(losetup -f)
+sudo losetup $unusedev $1
+sudo modprobe block2mtd block2mtd=$unusedev,$((128*1024)),2048,$((0x9a0000))
+sudo modprobe ubi
+sudo ubiattach /dev/ubi_ctrl -m 0

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [[ $# -eq 0 ]];then
+    echo pls use img
+    exit
+fi
+undev=$(losetup -j $1 -O NAME --noheadings)
+if [[ x"$undev" = x"" ]];then
+    echo not mount the ubi
+    exit
+fi
+sudo losetup -d $undev
+sudo modprobe -r ubifs ubi block2mtd
